@@ -475,6 +475,15 @@ input:checked + .slider:before {
 			</label>
 		</div>
 	</div>
+	<div class="et-action-row">
+		<div class="et-action-label"><%=translate("Disable P2P")%></div>
+		<div class="et-action-controls">
+			<label class="switch">
+				<input type="checkbox" id="p2pSwitch" disabled>
+				<span class="slider"></span>
+			</label>
+		</div>
+	</div>
 </div>
 
 <div class="et-status-card et-status-empty" id="easytier_status">
@@ -711,6 +720,7 @@ function showToast(message) {
 function setControlsDisabled(disabled) {
 	document.getElementById('coreSwitch').disabled = disabled;
 	document.getElementById('webSwitch').disabled = disabled;
+	document.getElementById('p2pSwitch').disabled = disabled;
 	document.getElementById('restartBtn').disabled = disabled;
 }
 
@@ -812,6 +822,33 @@ function toggleWeb(enabled) {
 	xhr.send();
 }
 
+function toggleP2P(disabled) {
+	if (firstLoad || actionCooldown) {
+		document.getElementById('p2pSwitch').checked = !disabled;
+		return;
+	}
+	
+	actionCooldown = true;
+	setControlsDisabled(true);
+	showToast('<%=translate("Restarting service...")%>');
+	
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', '<%=url("admin", "vpn", "easytier", "toggle_p2p")%>?enabled=' + (disabled ? '1' : '0'), true);
+	xhr.onload = function() {
+		setTimeout(function() { 
+			actionCooldown = false;
+			setControlsDisabled(false);
+		}, 5000);
+	};
+	xhr.onerror = function() {
+		setTimeout(function() { 
+			actionCooldown = false;
+			setControlsDisabled(false);
+		}, 5000);
+	};
+	xhr.send();
+}
+
 document.getElementById('coreSwitch').addEventListener('change', function() {
 	if (firstLoad) {
 		this.checked = !this.checked;
@@ -826,6 +863,14 @@ document.getElementById('webSwitch').addEventListener('change', function() {
 		return;
 	}
 	toggleWeb(this.checked);
+});
+
+document.getElementById('p2pSwitch').addEventListener('change', function() {
+	if (firstLoad) {
+		this.checked = !this.checked;
+		return;
+	}
+	toggleP2P(this.checked);
 });
 
 var tunTrafficData = {
@@ -1083,9 +1128,11 @@ XHR.poll(3, '<%=url("admin", "vpn", "easytier", "api_status")%>', null, function
 	// 使用配置值初始化开关状态
 	var coreSwitch = document.getElementById('coreSwitch');
 	var webSwitch = document.getElementById('webSwitch');
+	var p2pSwitch = document.getElementById('p2pSwitch');
 	
 	coreSwitch.checked = data.cenabled;
 	webSwitch.checked = data.wenabled;
+	p2pSwitch.checked = !!data.disable_p2p;
 	
 	// 首次加载完成后启用控件
 	if (firstLoad && !actionCooldown) {

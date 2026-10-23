@@ -75,6 +75,7 @@ function index()
 	entry({"admin", "vpn", "easytier", "restart_service"}, call("restart_service")).leaf = true
 	entry({"admin", "vpn", "easytier", "toggle_core"}, call("toggle_core")).leaf = true
 	entry({"admin", "vpn", "easytier", "toggle_web"}, call("toggle_web")).leaf = true
+	entry({"admin", "vpn", "easytier", "toggle_p2p"}, call("toggle_p2p")).leaf = true
 	entry({"admin", "vpn", "easytier", "download_easytier"}, call("download_easytier")).leaf = true
 	entry({"admin", "vpn", "easytier", "download_progress"}, call("download_progress")).leaf = true
 	entry({"admin", "vpn", "easytier", "cancel_download"}, call("cancel_download")).leaf = true
@@ -90,6 +91,7 @@ function act_status()
 	e.port = (port or 0)
 	e.cenabled = uci:get_first("easytier", "easytier", "enabled") == "1"
 	e.wenabled = uci:get_first("easytier", "easytier", "web_enabled") == "1"
+	e.disable_p2p = uci:get_first("easytier", "easytier", "disable_p2p") == "1"
 	
 	-- 使用 Lua 原生计算运行时长
 	e.etsta = calc_uptime("/tmp/easytier_time")
@@ -958,6 +960,18 @@ function toggle_web()
 	else
 		luci.sys.exec("/etc/init.d/easytier restart >/dev/null 2>&1 &")
 	end
+	luci.http.prepare_content("application/json")
+	luci.http.write_json({success = true})
+end
+
+function toggle_p2p()
+	local enabled = luci.http.formvalue("enabled")
+	local uci = require "luci.model.uci".cursor()
+	uci:set("easytier", uci:get_first("easytier", "easytier"), "disable_p2p", enabled)
+	uci:commit("easytier")
+
+	-- --disable-p2p 是启动参数，需要重启核心进程才能生效
+	luci.sys.exec("/etc/init.d/easytier restart >/dev/null 2>&1 &")
 	luci.http.prepare_content("application/json")
 	luci.http.write_json({success = true})
 end
